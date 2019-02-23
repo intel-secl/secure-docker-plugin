@@ -1,0 +1,8 @@
+[Unit]
+Description=ISecL K8S Docker Secure Plugin Socket
+
+[Socket]
+ListenStream=/run/docker/plugins/secure-docker-plugin.sock
+
+[Install]
+WantedBy=sockets.target

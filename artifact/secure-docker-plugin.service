@@ -1,0 +1,12 @@
+[Unit]
+Description=ISecL K8S Docker Secure Plugin
+Before=docker.service
+After=network.target secure-docker-plugin.socket
+Requires=secure-docker-plugin.socket docker.service
+
+[Service]
+ExecStart=/usr/bin/secure-docker-plugin
+
+
+[Install]
+WantedBy=multi-user.target
