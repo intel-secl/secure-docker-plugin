@@ -71,15 +71,18 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 		return authorization.Response{Allow: false}
 	}
 
+	// Convert image id into uuid format
+	imageUUID := util.GetUUIDFromImageID(imageID)
+
 	// Get Image flavor
-	flavor, err := util.GetImageFlavor(imageID)
+	flavor, err := util.GetImageFlavor(imageUUID)
 	if err != nil {
 		log.Println("Error retrieving the image flavor - %v", err)
 		return authorization.Response{Allow: false}
 	}
 
 	if flavor.Image.Meta.ID == "" {
-		log.Println("Flavor does not exist for the image ", imageID)
+		log.Println("Flavor does not exist for the image ", imageUUID)
 		return authorization.Response{Allow: true}
 	}
 
@@ -99,7 +102,7 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 
 	if keyfetchRequired {
 		keyURL := flavor.Image.Encryption.KeyURL
-		go keyfetch.FetchKey(keyURL, imageID, keyfetchch)
+		go keyfetch.FetchKey(keyURL, imageUUID, keyfetchch)
 	}
 
 	if integrityRequired {
@@ -122,12 +125,6 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 // AuthZRes authorizes the docker client response.
 // All responses are allowed by default.
 func (plugin *SecureDockerPlugin) AuthZRes(req authorization.Request) authorization.Response {
-
-	//Parse request and the request body
-	reqURI, _ := url.QueryUnescape(req.RequestURI)
-	reqURL, _ := url.ParseRequestURI(reqURI)
-
-	log.Println("AuthZRes Request URL path ", reqURL.Path)
 
 	// Allowed by default.
 	return authorization.Response{Allow: true}

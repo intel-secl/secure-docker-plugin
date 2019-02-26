@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/json"
 	"log"
 	"os/exec"
@@ -18,28 +19,27 @@ const (
 	imageNameShaPrefix = "sha256:"
 )
 
-// getUUIDFromImageID is used to convert image id into uuid
-func getUUIDFromImageID(imageID string) string {
+// GetUUIDFromImageID is used to convert image id into uuid format
+func GetUUIDFromImageID(imageID string) string {
 
 	var NameSpaceDNS = uuid.Must(uuid.Parse("6ba7b810-9dad-11d1-80b4-00c04fd430c8"))
-	imageUUID := uuid.NewMD5(NameSpaceDNS, []byte(imageID))
-	log.Println("generated Version 3 UUID ", imageUUID)
+	imageUUID := uuid.NewHash(md5.New(), NameSpaceDNS, []byte(imageID), 4)
+	log.Println("generated Version 4 UUID ", imageUUID)
 	return imageUUID.String()
 }
 
 // GetImageFlavor is used to retrieve image flavor from Workload Agent
-func GetImageFlavor(imageID string) (flavor.ImageFlavor, error) {
+func GetImageFlavor(imageUUID string) (flavor.ImageFlavor, error) {
 
 	var flavor flavor.ImageFlavor
 
-	imageUUID := getUUIDFromImageID(imageID)
-	f, err := exec.Command("wlagent", "fetch-flavor", imageUUID, "CONTAINER_IMAGE").CombinedOutput()
+	f, err := exec.Command("wlagent", "fetch-flavor", imageUUID, "CONTAINER_IMAGE").Output()
 	if err != nil {
 		log.Println("Unable to fetch image flavor from the workload agent - %v", err)
 		return flavor, err
 	}
 
-	json.Unmarshal([]byte(f), &flavor)
+	json.Unmarshal(f, &flavor)
 	return flavor, nil
 }
 
