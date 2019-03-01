@@ -24,7 +24,6 @@ func GetUUIDFromImageID(imageID string) string {
 
 	var NameSpaceDNS = uuid.Must(uuid.Parse("6ba7b810-9dad-11d1-80b4-00c04fd430c8"))
 	imageUUID := uuid.NewHash(md5.New(), NameSpaceDNS, []byte(imageID), 4)
-	log.Println("generated Version 4 UUID ", imageUUID)
 	return imageUUID.String()
 }
 

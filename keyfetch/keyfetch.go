@@ -58,8 +58,6 @@ func CacheKey() {
 
 			// waiting for image id and key url from the plugin
 			keyInfo := <-ch
-			log.Println("keyInfo.keyURL: ", keyInfo.keyURL)
-			log.Println("keyInfo.imageUUID: ", keyInfo.imageUUID)
 
 			keyHandle = getKeyHandle(keyInfo.keyURL)
 			if keyHandle == "" {
@@ -77,25 +75,6 @@ func CacheKey() {
 	}
 }
 
-/*// FetchKey is used to fetch the decryption key from workload agent and store wrapped key in kernel keyring
-func FetchKey(keyURL, imageUUID string, keyfetchch chan bool) {
-
-	if keyURL == "" {
-		log.Println("Key URL is not specified in flavor.")
-		keyfetchch <- false
-		return
-	}
-
-	keyHandle := getKeyHandle(keyURL)
-	err := cacheDecryptionKey(imageUUID, keyHandle)
-	if err != nil {
-		keyfetchch <- false
-		return
-	}
-
-	keyfetchch <- true
-}*/
-
 // FetchKey is used to fetch the decryption key from workload agent and store wrapped key in kernel keyring
 func FetchKey(keyURL, imageUUID string, keyfetchch chan bool) {
 
@@ -108,8 +87,6 @@ func FetchKey(keyURL, imageUUID string, keyfetchch chan bool) {
 	var ki keyInfo
 	ki.keyURL = keyURL
 	ki.imageUUID = imageUUID
-	log.Println("ki.keyURL: ", ki.keyURL)
-	log.Println("ki.imageUUID: ", ki.imageUUID)
 
 	// Triggering the goroutine by passing image id and key url on channel
 	ch <- ki
