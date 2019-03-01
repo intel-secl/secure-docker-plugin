@@ -19,11 +19,11 @@ const (
 	imageNameShaPrefix = "sha256:"
 )
 
-// GetUUIDFromImageID is used to convert image id into uuid format
-func GetUUIDFromImageID(imageID string) string {
+// GetUUIDFromImageRef is used to convert image id into uuid format
+func GetUUIDFromImageRef(imageRef string) string {
 
 	var NameSpaceDNS = uuid.Must(uuid.Parse("6ba7b810-9dad-11d1-80b4-00c04fd430c8"))
-	imageUUID := uuid.NewHash(md5.New(), NameSpaceDNS, []byte(imageID), 4)
+	imageUUID := uuid.NewHash(md5.New(), NameSpaceDNS, []byte(imageRef), 4)
 	return imageUUID.String()
 }
 

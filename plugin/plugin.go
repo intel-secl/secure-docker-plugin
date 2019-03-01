@@ -58,21 +58,21 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 
 	// Kubelet refers to images in the local cache by the sha256 hash,
 	// so we need to convert this back to the image name before proceeding
-	imageName, err := util.GetImageName(imageRef)
+	/*imageName, err := util.GetImageName(imageRef)
 	if err != nil {
 		log.Println("Error retrieving the image name and tag - %v", err)
 		return authorization.Response{Allow: false}
-	}
+	}*/
 
 	// Image ID is needed to fetch image flavor
-	imageID, err := util.GetImageID(imageRef)
+	/*imageID, err := util.GetImageID(imageRef)
 	if err != nil {
 		log.Println("Error retrieving the image id - %v", err)
 		return authorization.Response{Allow: false}
-	}
+	}*/
 
-	// Convert image id into uuid format
-	imageUUID := util.GetUUIDFromImageID(imageID)
+	// Convert image ref into uuid format
+	imageUUID := util.GetUUIDFromImageRef(imageRef)
 
 	// Get Image flavor
 	flavor, err := util.GetImageFlavor(imageUUID)
@@ -97,7 +97,7 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 
 	if integrityRequired {
 		notaryURL := flavor.Image.Integrity.NotaryURL
-		go integrity.VerifyIntegrity(notaryURL, imageName, integritych)
+		go integrity.VerifyIntegrity(notaryURL, imageRef, integritych)
 	}
 
 	if keyfetchRequired {
