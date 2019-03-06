@@ -56,18 +56,10 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 	// Extract image reference from request
 	imageRef := util.GetImageRef(req)
 
-	// Kubelet refers to images in the local cache by the sha256 hash,
-	// so we need to convert this back to the image name before proceeding
-	imageName, err := util.GetImageName(imageRef)
-	if err != nil {
-		log.Println("Error retrieving the image name and tag - %v", err)
-		return authorization.Response{Allow: false}
-	}
-
 	// Image ID is needed to fetch image flavor
 	imageID, err := util.GetImageID(imageRef)
 	if err != nil {
-		log.Println("Error retrieving the image id - %v", err)
+		log.Println("Error retrieving the image id.", err)
 		return authorization.Response{Allow: false}
 	}
 
@@ -77,12 +69,12 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 	// Get Image flavor
 	flavor, err := util.GetImageFlavor(imageUUID)
 	if err != nil {
-		log.Println("Error retrieving the image flavor - %v", err)
+		log.Println("Error retrieving the image flavor.", err)
 		return authorization.Response{Allow: false}
 	}
 
 	if flavor.Image.Meta.ID == "" {
-		log.Println("Flavor does not exist for the image ", imageUUID)
+		log.Println("Flavor does not exist for the image.", imageUUID)
 		return authorization.Response{Allow: true}
 	}
 
@@ -97,7 +89,7 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 
 	if integrityRequired {
 		notaryURL := flavor.Image.Integrity.NotaryURL
-		go integrity.VerifyIntegrity(notaryURL, imageName, integritych)
+		go integrity.VerifyIntegrity(notaryURL, imageRef, integritych)
 	}
 
 	if keyfetchRequired {
