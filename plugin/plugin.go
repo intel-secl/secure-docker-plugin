@@ -64,7 +64,7 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 	}
 
 	// Convert image id into uuid format
-	imageUUID := util.GetUUIDFromImageID(imageID)
+	imageUUID := util.GetUUIDFromImageId(imageID)
 
 	// Get Image flavor
 	flavor, err := util.GetImageFlavor(imageUUID)
