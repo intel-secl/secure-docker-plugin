@@ -6,24 +6,23 @@ import (
 	"encoding/json"
 	"log"
 	"os/exec"
+	"strings"
 
 	"intel/isecl/lib/flavor"
 
+	"github.com/docker/distribution/reference"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-plugins-helpers/authorization"
 	"github.com/google/uuid"
 )
 
-const (
-	imageNameShaPrefix = "sha256:"
-)
-
-// GetUUIDFromImageRef is used to convert image id into uuid format
-func GetUUIDFromImageRef(imageRef string) string {
+// GetUUIDFromImageID is used to convert image id into uuid format
+func GetUUIDFromImageID(imageID string) string {
 
 	var NameSpaceDNS = uuid.Must(uuid.Parse("6ba7b810-9dad-11d1-80b4-00c04fd430c8"))
-	imageUUID := uuid.NewHash(md5.New(), NameSpaceDNS, []byte(imageRef), 4)
+	imageUUID := uuid.NewHash(md5.New(), NameSpaceDNS, []byte(imageID), 4)
 	return imageUUID.String()
 }
 
@@ -50,42 +49,63 @@ func GetImageRef(req authorization.Request) string {
 	return config.Image
 }
 
-// GetImageName returns the image name and tag for a conatiner image
-func GetImageName(image string) (string, error) {
+// GetImageMetadata returns the image metadata for a container image
+func GetImageMetadata(imageRef string) (*types.ImageInspect, error) {
 
 	cli, err := client.NewEnvClient()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	ctx := context.Background()
-
-	imageInspect, _, err := cli.ImageInspectWithRaw(ctx, image)
+	imageInspect, _, err := cli.ImageInspectWithRaw(context.Background(), imageRef)
 	if err != nil {
-		log.Println("Couldn't retrieve image name from sha - %v", err)
-		return "", err
+		log.Println("Couldn't retrieve image metadata from name.", err)
+		return nil, nil
 	}
 
-	log.Println("Extracted image name ", imageInspect.RepoTags[0])
-	return imageInspect.RepoTags[0], nil
+	return &imageInspect, nil
 }
 
-// GetImageID retruns the image id for a container image
-func GetImageID(image string) (string, error) {
+// GetImageID returns the image id for a container image
+func GetImageID(imageRef string) (string, error) {
 
-	cli, err := client.NewEnvClient()
+	imageMetadata, err := GetImageMetadata(imageRef)
 	if err != nil {
+		log.Println("Couldn't retrieve image metadata.", err)
 		return "", err
 	}
 
-	ctx := context.Background()
-
-	imageInspect, _, err := cli.ImageInspectWithRaw(ctx, image)
-	if err != nil {
-		log.Println("Couldn't retrieve image sha from name - %v", err)
-		return "", err
+	if imageMetadata == nil {
+		//Get the sha of an image using docker api
+		digest, err := GetDigestFromRegistry(imageRef)
+		if err != nil {
+			log.Println("Couldn't retrieve image digest from registry.", err)
+			return "", err
+		}
+		return strings.Split(digest, ":")[1], nil
 	}
 
-	log.Println("Extracted image hash ", imageInspect.ID)
-	return imageInspect.ID, nil
+	return strings.Split(imageMetadata.ID, ":")[1], nil
+}
+
+func getAPITagFromNamedRef(ref reference.Named) string {
+
+	ref = reference.TagNameOnly(ref)
+	if tagged, ok := ref.(reference.Tagged); ok {
+		return tagged.Tag()
+	}
+
+	return ""
+}
+
+// GetRegistryAddr parses the image name from container create request,
+// returns image, tag and registry address
+func GetRegistryAddr(imageRef string) (string, string, string, error) {
+
+	ref, err := reference.ParseNormalizedNamed(imageRef)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	return reference.Domain(ref), reference.Path(ref), getAPITagFromNamedRef(ref), nil
 }

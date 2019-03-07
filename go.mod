@@ -2,6 +2,7 @@ module secure-docker-plugin
 
 require (
 	github.com/Sirupsen/logrus v1.3.0 // indirect
+	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
 	github.com/coreos/go-systemd v0.0.0-20190212144455-93d5ec2c7f76 // indirect
 	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v1.13.1
