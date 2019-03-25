@@ -18,6 +18,18 @@ import (
 	"github.com/google/uuid"
 )
 
+type securityMetaData struct {
+	RequiresConfidentiality bool
+	RequiresIntegrity       bool
+	KeyHandle               string
+	KeySize                 string
+	KeyType                 string
+	CryptCipher             string
+	KeyFilePath             string
+	IsEmptyLayer            bool
+	IsSecurityTransformed   bool
+}
+
 // GetUUIDFromImageID is used to convert image id into uuid format
 func GetUUIDFromImageID(imageID string) string {
 
@@ -30,7 +42,7 @@ func GetUUIDFromImageID(imageID string) string {
 func GetImageFlavor(imageUUID string) (flavor.ImageFlavor, error) {
 
 	var flavor flavor.ImageFlavor
-
+	log.Println(imageUUID)
 	f, err := exec.Command("wlagent", "fetch-flavor", imageUUID, "CONTAINER_IMAGE").Output()
 	if err != nil {
 		log.Println("Unable to fetch image flavor from the workload agent - %v", err)
@@ -108,4 +120,38 @@ func GetRegistryAddr(imageRef string) (string, string, string, error) {
 	}
 
 	return reference.Domain(ref), reference.Path(ref), getAPITagFromNamedRef(ref), nil
+}
+
+// GetSecurityMetaData gets data related to container confidentiality and integrity by providing image ID
+/* Sample security meta data JSON:
+{
+	"RequiresConfidentiality": true,
+	"RequiresIntegrity": false,
+	"KeyHandle": "f2c863b9-8fa7-4831-98cd-3cdd82567243",
+	"KeySize": "256",
+	"KeyType": "key-type-keyrings",
+	"CryptCipher": "aes-xts-plain",
+	"KeyFilePath": "/tmp/wrappedKey_f2c863b9-8fa7-4831-98cd-3cdd82567243_694390072",
+	"IsEmptyLayer": false,
+	"IsSecurityTransformed": true
+}
+*/
+func GetSecurityMetaData(imageID string) (*securityMetaData, error) {
+
+	var secData securityMetaData
+	client, err := client.NewEnvClient()
+	if err != nil {
+		return nil, err
+	}
+	imageInfo, _, err := client.ImageInspectWithRaw(context.Background(), imageID)
+	if err != nil {
+		return nil, err
+	}
+	securityMetaData, _ := json.Marshal(imageInfo.GraphDriver.Data["security-meta-data"])
+	replacer := strings.NewReplacer("\\", "", "\"{", "{", "}\"", "}")
+	err = json.Unmarshal([]byte(replacer.Replace(string(securityMetaData))), &secData)
+	if err != nil {
+		return nil, err
+	}
+	return &secData, nil
 }
