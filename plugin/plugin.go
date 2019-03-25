@@ -1,21 +1,31 @@
 package plugin
 
 import (
+	"encoding/json"
 	"log"
 	"net/url"
+	"os/exec"
+
+	"regexp"
 	"strings"
 
 	"secure-docker-plugin/integrity"
 	"secure-docker-plugin/keyfetch"
 	"secure-docker-plugin/util"
 
+	pinfo "intel/isecl/lib/platform-info"
+	"intel/isecl/lib/vml"
+
+	"context"
 	dockerapi "github.com/docker/docker/api"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/go-plugins-helpers/authorization"
 )
 
 const (
-	containerCreateURI = "/containers/create"
+	containerCreateURI                  = "/containers/create"
+	regexForContainerIDValidation       = "^[a-fA-F0-9]{64}$"
+	regexForcontainerStartURIValidation = "(.*?\bcontainers\b)(.*?\bstart\b).*"
 )
 
 // SecureDockerPlugin struct definition
@@ -42,8 +52,6 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 	//Parse request and the request body
 	reqURI, _ := url.QueryUnescape(req.RequestURI)
 	reqURL, _ := url.ParseRequestURI(reqURI)
-
-	log.Println("AuthZReq Request URL path ", reqURL.Path)
 
 	// Checking reqURL Path for the request type
 	// If request type is not /containers/create, then passthrough the request
@@ -118,6 +126,74 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 // All responses are allowed by default.
 func (plugin *SecureDockerPlugin) AuthZRes(req authorization.Request) authorization.Response {
 
+	//Parse request and the request body
+	reqURI, _ := url.QueryUnescape(req.RequestURI)
+	reqURL, _ := url.ParseRequestURI(reqURI)
+
+	// Checking reqURL Path for the request type
+	// If request type is not /containers/(id or name)/start, then passthrough the request
+	r := regexp.MustCompile(regexForcontainerStartURIValidation)
+	if !r.MatchString(reqURL.Path) {
+		return authorization.Response{Allow: true}
+	}
+	if req.ResponseStatusCode == 204 {
+		reqURLSplit := strings.Split(reqURL.Path, "/")
+		containerID := reqURLSplit[len(reqURLSplit)-2]
+		if isValidContainerID(containerID) {
+			createTrustReport(containerID)
+		}
+	}
+
 	// Allowed by default.
 	return authorization.Response{Allow: true}
+}
+
+func isValidContainerID(containerID string) bool {
+	r := regexp.MustCompile(regexForContainerIDValidation)
+	return r.MatchString(containerID)
+}
+
+func createTrustReport(containerID string) {
+
+	var encrypted bool
+	var integrityEnforced bool
+	client, err := dockerclient.NewEnvClient()
+	if err != nil {
+		log.Println("Failed to get docker client: ", err.Error())
+	}
+
+	instanceInfo, err := client.ContainerInspect(context.Background(), containerID)
+	if err != nil {
+		log.Println("Failed to get instance info: ", err.Error())
+	}
+	imageID := strings.TrimPrefix(instanceInfo.Image, "sha256:")
+	securityMetaData, err := util.GetSecurityMetaData(imageID)
+	if err != nil {
+		log.Println("Error getting security meta data: ", err)
+	}
+	if securityMetaData.KeyHandle == "" {
+		encrypted = false
+	} else {
+		encrypted = true
+	}
+	// get host hardware UUID
+	log.Println("Retrieving host hardware UUID...")
+	hardwareUUID, err := pinfo.HardwareUUID()
+	if err != nil {
+		log.Println("Unable to get the host hardware UUID")
+	}
+	containerUUID := util.GetUUIDFromImageID(containerID)
+	imageUUID := util.GetUUIDFromImageID(imageID)
+	log.Println("The host hardware UUID is :", hardwareUUID)
+	log.Println("Container id : ", containerID)
+	manifest, err := vml.CreateContainerManifest(containerUUID, hardwareUUID, imageUUID, encrypted, integrityEnforced)
+	if err != nil {
+		log.Println("Unable to create manifest")
+	}
+	manifestByte, err := json.Marshal(manifest)
+	log.Println("Manifest: ", string(manifestByte))
+	_, err = exec.Command("wlagent", "create-instance-trust-report", string(manifestByte)).CombinedOutput()
+	if err != nil {
+		log.Println("Failed to create image trust report: ", err.Error())
+	}
 }
