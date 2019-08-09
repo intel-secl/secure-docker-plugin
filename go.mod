@@ -25,11 +25,11 @@ require (
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.3.0
 
-	intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v0.0.0-20190330120159-58b3c9eb1e63
+	intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v0.0.0-20190807232609-b7b7cd045b1c
 
-	intel/isecl/lib/flavor => gitlab.devtools.intel.com/sst/isecl/lib/flavor.git v0.0.0-20190222033559-f9cc2b34194d
+	intel/isecl/lib/flavor => gitlab.devtools.intel.com/sst/isecl/lib/flavor.git v0.0.0-20190808115139-3baf114b27c1
 
-	intel/isecl/lib/platform-info => gitlab.devtools.intel.com/sst/isecl/lib/platform-info.git v0.0.0-20181206180455-b2908f06aa05
+	intel/isecl/lib/platform-info => gitlab.devtools.intel.com/sst/isecl/lib/platform-info.git v0.0.0-20190724162312-1400c15ab9ee
 
-	intel/isecl/lib/vml => gitlab.devtools.intel.com/sst/isecl/lib/volume-management.git v0.0.0-20190318085416-be922c5e335f
+	intel/isecl/lib/vml => gitlab.devtools.intel.com/sst/isecl/lib/volume-management.git v0.0.0-20190724045147-f917328f3b16
 )
