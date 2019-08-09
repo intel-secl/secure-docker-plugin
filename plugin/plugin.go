@@ -13,7 +13,7 @@ import (
 	"secure-docker-plugin/keyfetch"
 	"secure-docker-plugin/util"
 
-	pinfo "intel/isecl/lib/platform-info"
+	pinfo "intel/isecl/lib/platform-info/platforminfo"
 	"intel/isecl/lib/vml"
 
 	"context"
@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	containerCreateURI                  = "/containers/create"
-	regexForContainerIDValidation       = "^[a-fA-F0-9]{64}$"
-	regexForcontainerStartURIValidation = "(.*?\bcontainers\b)(.*?\bstart\b).*"
+	containerCreateURI                  = `/containers/create`
+	regexForContainerIDValidation       = `^[a-fA-F0-9]{64}$`
+	regexForcontainerStartURIValidation = `(.*?\bcontainers\b)(.*?\bstart\b).*`
 )
 
 // SecureDockerPlugin struct definition
@@ -36,7 +36,6 @@ type SecureDockerPlugin struct {
 
 // NewPlugin creates a new instance of the secure docker plugin
 func NewPlugin(dockerHost string) (*SecureDockerPlugin, error) {
-
 	client, err := dockerclient.NewClient(dockerHost, dockerapi.DefaultVersion, nil, nil)
 	if err != nil {
 		return nil, err
@@ -48,7 +47,6 @@ func NewPlugin(dockerHost string) (*SecureDockerPlugin, error) {
 // AuthZReq acts only on image run (containers/create) requests.
 // Remaining requests are passed through by default.
 func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorization.Response {
-
 	//Parse request and the request body
 	reqURI, _ := url.QueryUnescape(req.RequestURI)
 	reqURL, _ := url.ParseRequestURI(reqURI)
@@ -81,7 +79,7 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 		return authorization.Response{Allow: false}
 	}
 
-	if flavor.Image.Meta.ID == "" {
+	if flavor.ImageFlavor.Meta.ID == "" {
 		log.Println("Flavor does not exist for the image.", imageUUID)
 		return authorization.Response{Allow: true}
 	}
@@ -92,16 +90,16 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 	integrityVerified := true
 	keyFetched := true
 
-	integrityRequired := flavor.Image.IntegrityEnforced
-	keyfetchRequired := flavor.Image.EncryptionRequired
+	integrityRequired := flavor.ImageFlavor.IntegrityEnforced
+	keyfetchRequired := flavor.ImageFlavor.EncryptionRequired
 
 	if integrityRequired {
-		notaryURL := flavor.Image.Integrity.NotaryURL
+		notaryURL := flavor.ImageFlavor.Integrity.NotaryURL
 		go integrity.VerifyIntegrity(notaryURL, imageRef, integritych)
 	}
 
 	if keyfetchRequired {
-		keyURL := flavor.Image.Encryption.KeyURL
+		keyURL := flavor.ImageFlavor.Encryption.KeyURL
 		go keyfetch.FetchKey(keyURL, imageUUID, keyfetchch)
 	}
 
@@ -125,7 +123,6 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 // AuthZRes authorizes the docker client response.
 // All responses are allowed by default.
 func (plugin *SecureDockerPlugin) AuthZRes(req authorization.Request) authorization.Response {
-
 	//Parse request and the request body
 	reqURI, _ := url.QueryUnescape(req.RequestURI)
 	reqURL, _ := url.ParseRequestURI(reqURI)
