@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/url"
 	"os/exec"
-
 	"regexp"
 	"strings"
 
@@ -151,7 +150,6 @@ func isValidContainerID(containerID string) bool {
 }
 
 func createTrustReport(containerID string) {
-
 	var encrypted bool
 	var integrityEnforced bool
 	client, err := dockerclient.NewEnvClient()
@@ -168,7 +166,7 @@ func createTrustReport(containerID string) {
 	if err != nil {
 		log.Println("Error getting security meta data: ", err)
 	}
-	if securityMetaData.KeyHandle == "" {
+	if securityMetaData != nil && securityMetaData.KeyHandle == "" {
 		encrypted = false
 	} else {
 		encrypted = true
