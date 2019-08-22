@@ -76,7 +76,7 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 	flavor, err := util.GetImageFlavor(imageUUID)
 	if err != nil {
 		log.Println("Error retrieving the image flavor.", err)
-		return authorization.Response{Allow: true}
+		return authorization.Response{Allow: false}
 	}
 
 	if flavor.ImageFlavor.Meta.ID == "" {
