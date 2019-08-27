@@ -94,6 +94,10 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 
 	if integrityRequired {
 		notaryURL := flavor.ImageFlavor.Integrity.NotaryURL
+		if strings.HasSuffix(notaryURL, "/") {
+			notaryURL = notaryURL[:len(notaryURL)-1]
+		}
+	
 		go integrity.VerifyIntegrity(notaryURL, imageRef, integritych)
 	}
 
@@ -150,8 +154,8 @@ func isValidContainerID(containerID string) bool {
 }
 
 func createTrustReport(containerID string) {
-	var encrypted bool
-	var integrityEnforced bool
+	encrypted := false
+	integrityEnforced := false
 	client, err := dockerclient.NewEnvClient()
 	if err != nil {
 		log.Println("Failed to get docker client: ", err.Error())
