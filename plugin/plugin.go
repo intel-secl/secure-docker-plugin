@@ -175,9 +175,7 @@ func createTrustReport(containerID string) {
 	if err != nil {
 		log.Println("Error getting security meta data: ", err)
 	}
-	if securityMetaData != nil && securityMetaData.KeyHandle == "" {
-		encrypted = false
-	} else {
+	if securityMetaData != nil && securityMetaData.RequiresConfidentiality == true {
 		encrypted = true
 	}
 	// get host hardware UUID
