@@ -32,7 +32,7 @@ func getKeyHandle(keyURL string) string {
 // cacheDecryptionKey is used to cache decryption key on Workload Agent
 func cacheDecryptionKey(imageUUID, keyHandle string) error {
 
-	_, err := exec.Command("wlagent", "cache-key", imageUUID, keyHandle).Output()
+	_, err := exec.Command("wlagent", "cache-key", keyHandle, imageUUID).Output()
 	if err != nil {
 		log.Println("Unable to cache decryption key on the workload agent", err)
 		return err
