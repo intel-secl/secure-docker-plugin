@@ -25,11 +25,11 @@ require (
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.3.0
 
-        intel/isecl/lib/common => github.com/intel-secl/common v1.6-beta
+	intel/isecl/lib/common => github.com/intel-secl/common v0.0.0-20190920051932-22c16ec493a3
 
-        intel/isecl/lib/flavor => github.com/intel-secl/flavor v1.6-beta
+	intel/isecl/lib/flavor => github.com/intel-secl/flavor v0.0.0-20190915015315-7d9923b58ff3
 
-        intel/isecl/lib/platform-info => github.com/intel-secl/platform-info v1.6-beta
+	intel/isecl/lib/platform-info => github.com/intel-secl/platform-info v0.0.0-20190918083246-1f72bff4f238
 
-        intel/isecl/lib/vml => github.com/intel-secl/volume-management-library v1.6-beta
+	intel/isecl/lib/vml => github.com/intel-secl/volume-management-library v0.0.0-20190915022206-560299d2b8e9
 )
