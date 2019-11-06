@@ -10,7 +10,17 @@ The SDP is created based on the authorization plugin architecture supported by t
 ## Software requirements
 - git
 - makeself
-- Go 11.4 or newer
+- Go 1.11.4 or newer
+
+### Install `go 1.11.4` or newer
+The `secure-docker-plugin` requires Go version 1.11.4 that has support for `go modules`. The build was validated with version 1.11.4 version of `go`. It is recommended that you use a newer version of `go` - but please keep in mind that the product has been validated with 1.11.4 and newer versions of `go` may introduce compatibility issues. You can use the following to install `go`.
+```shell
+wget https://dl.google.com/go/go1.11.4.linux-amd64.tar.gz
+tar -xzf go1.11.4.linux-amd64.tar.gz
+sudo mv go /usr/local
+export GOROOT=/usr/local/go
+export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+```
 
 ### Build
 ```console
