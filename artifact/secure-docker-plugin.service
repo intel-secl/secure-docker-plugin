@@ -8,7 +8,7 @@ Requires=secure-docker-plugin.socket docker.service
 ExecStart=/usr/bin/secure-docker-plugin
 Restart=on-failure
 RestartSec=10
-startLimitIntervalSec=60
+StartLimitIntervalSec=60
 
 [Install]
 WantedBy=multi-user.target
