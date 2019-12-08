@@ -2,7 +2,7 @@ module secure-docker-plugin
 
 require (
 	github.com/Appboy/worker-pools v0.0.0-20190116202358-b3004bb29cb5
-	github.com/Sirupsen/logrus v1.3.0 // indirect
+	github.com/Sirupsen/logrus v1.3.0
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
 	github.com/coreos/go-systemd v0.0.0-20190212144455-93d5ec2c7f76 // indirect
 	github.com/diegobernardes/ttlcache v0.0.0-20190225130438-dcd0e0a06d7f // indirect
@@ -16,20 +16,18 @@ require (
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
 	golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
-	intel/isecl/lib/common v0.0.0
+	intel/isecl/lib/common v1.0.0-Beta
 	intel/isecl/lib/flavor v0.0.0
 	intel/isecl/lib/platform-info v0.0.0
 	intel/isecl/lib/vml v0.0.0
 )
 
-replace (
-	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.3.0
+replace github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.3.0
 
-	intel/isecl/lib/common => github.com/intel-secl/common v0.0.0-20190920051932-22c16ec493a3
+replace intel/isecl/lib/common => gitlab.devtools.intel.com/sst/isecl/lib/common.git v1.0/develop
 
-	intel/isecl/lib/flavor => github.com/intel-secl/flavor v0.0.0-20190915015315-7d9923b58ff3
+replace intel/isecl/lib/flavor => gitlab.devtools.intel.com/sst/isecl/lib/flavor.git v1.0/develop
 
-	intel/isecl/lib/platform-info => github.com/intel-secl/platform-info v0.0.0-20190918083246-1f72bff4f238
+replace intel/isecl/lib/platform-info => gitlab.devtools.intel.com/sst/isecl/lib/platform-info.git v1.0/develop
 
-	intel/isecl/lib/vml => github.com/intel-secl/volume-management-library v0.0.0-20190915022206-560299d2b8e9
-)
+replace intel/isecl/lib/vml => gitlab.devtools.intel.com/sst/isecl/lib/volume-management.git v1.0/develop
