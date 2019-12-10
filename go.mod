@@ -1,7 +1,6 @@
 module secure-docker-plugin
 
 require (
-	github.com/Appboy/worker-pools v0.0.0-20190116202358-b3004bb29cb5
 	github.com/Sirupsen/logrus v1.3.0
 	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
 	github.com/coreos/go-systemd v0.0.0-20190212144455-93d5ec2c7f76 // indirect

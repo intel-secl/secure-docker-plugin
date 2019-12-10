@@ -44,18 +44,18 @@ func GetUUIDFromImageID(imageID string) string {
 }
 
 // GetImageFlavor is used to retrieve image flavor from Workload Agent
-func GetImageFlavor(imageUUID string) (flavor.SignedImageFlavor, error) {
+func GetImageFlavor(imageUUID string) (flavor.Image, error) {
 
-	var signedFlavor flavor.SignedImageFlavor
+	var flvr flavor.Image
 	log.Println(imageUUID)
-	f, err := exec.Command("wlagent", "fetch-flavor", imageUUID, "CONTAINER_IMAGE").Output()
+	f, err := exec.Command("wlagent", "fetch-flavor", imageUUID).Output()
 	if err != nil {
 		log.Println("Unable to fetch image flavor from the workload agent - %v", err)
-		return signedFlavor, err
+		return flvr, err
 	}
 
-	json.Unmarshal(f, &signedFlavor)
-	return signedFlavor, nil
+	json.Unmarshal(f, &flvr)
+	return flvr, nil
 }
 
 // GetImageRef returns the image reference for a container image

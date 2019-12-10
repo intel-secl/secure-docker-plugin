@@ -38,12 +38,11 @@ func getImageName(imageRef string) (string, error) {
 }
 
 // VerifyIntegrity is used for veryfing signature with notary server
-func VerifyIntegrity(notaryServerURL, imageRef string, integritych chan bool) {
+func VerifyIntegrity(notaryServerURL, imageRef string) bool {
 
 	if notaryServerURL == "" {
 		log.Println("Notary URL is not specified in flavor.")
-		integritych <- false
-		return
+		return false
 	}
 
 	// Kubelet passes along image references as sha sums
@@ -52,8 +51,7 @@ func VerifyIntegrity(notaryServerURL, imageRef string, integritych chan bool) {
 		image, err := getImageName(imageRef)
 		if err != nil {
 			log.Println("Error retrieving the image name and tag.", err)
-			integritych <- false
-			return
+			return false
 		}
 		imageRef = image
 	}
@@ -62,8 +60,7 @@ func VerifyIntegrity(notaryServerURL, imageRef string, integritych chan bool) {
 	registryAddr, imageName, tag, err := util.GetRegistryAddr(imageRef)
 	if err != nil {
 		log.Println("Failed in parsing Registry Address from Image reference.", err, imageRef)
-		integritych <- false
-		return
+		return false
 	}
 
 	finalImageRef := ""
@@ -86,9 +83,8 @@ func VerifyIntegrity(notaryServerURL, imageRef string, integritych chan bool) {
 	// Was there an error? if yes, then assume not trusted and don't allow
 	if trustPullCmdErr != nil {
 		log.Println("Trust Inspect returned error: ", trustPullCmdErr.Error())
-		integritych <- false
-		return
+		return false
 	}
 
-	integritych <- true
+	return true
 }
