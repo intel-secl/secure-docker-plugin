@@ -11,7 +11,6 @@ import (
 	"os/user"
 	"strconv"
 
-	"secure-docker-plugin/keyfetch"
 	"secure-docker-plugin/plugin"
 
 	"github.com/docker/go-plugins-helpers/authorization"
@@ -34,9 +33,6 @@ func main() {
 	flag.Parse()
 
 	defer recovery()
-
-	// CacheKey is goroutine, will run along side secure docker plugin to call workload agent to fetch the kmskey,unwrap the key and store the actual key in kernel keyring
-	go keyfetch.CacheKey()
 
 	// Create plugin instance
 	plugin, err := plugin.NewPlugin(*flDockerHost)

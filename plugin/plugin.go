@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"secure-docker-plugin/integrity"
-	"secure-docker-plugin/keyfetch"
 	"secure-docker-plugin/util"
 
 	pinfo "intel/isecl/lib/platform-info/platforminfo"
@@ -83,43 +82,25 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 		return authorization.Response{Allow: false}
 	}
 
-	if flavor.ImageFlavor.Meta.ID == "" {
+	if flavor.Meta.ID == "" {
 		log.Println("Flavor does not exist for the image.", imageUUID)
 		return authorization.Response{Allow: true}
 	}
 
-	integritych := make(chan bool)
-	keyfetchch := make(chan bool)
-
 	integrityVerified := true
-	keyFetched := true
 
-	integrityRequired := flavor.ImageFlavor.IntegrityEnforced
-	keyfetchRequired := flavor.ImageFlavor.EncryptionRequired
+	integrityRequired := flavor.IntegrityEnforced
 
 	if integrityRequired {
-		notaryURL := flavor.ImageFlavor.Integrity.NotaryURL
+		notaryURL := flavor.Integrity.NotaryURL
 		if strings.HasSuffix(notaryURL, "/") {
 			notaryURL = notaryURL[:len(notaryURL)-1]
 		}
 	
-		go integrity.VerifyIntegrity(notaryURL, imageRef, integritych)
+		integrityVerified = integrity.VerifyIntegrity(notaryURL, imageRef)
 	}
 
-	if keyfetchRequired {
-		keyURL := flavor.ImageFlavor.Encryption.KeyURL
-		go keyfetch.FetchKey(keyURL, imageUUID, keyfetchch)
-	}
-
-	if integrityRequired {
-		integrityVerified = <-integritych
-	}
-
-	if keyfetchRequired {
-		keyFetched = <-keyfetchch
-	}
-
-	if integrityVerified && keyFetched {
+	if integrityVerified {
 		log.Println("[ALLOWED]")
 		return authorization.Response{Allow: true}
 	}
