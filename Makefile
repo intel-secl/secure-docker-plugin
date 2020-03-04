@@ -18,7 +18,7 @@ LDFLAGS=-ldflags "-X main.Version=$(VERSION)-$(GITCOMMIT) -X main.Branch=$(GITBR
 # Generate the service binary and executable
 .DEFAULT_GOAL: $(SERVICE)
 $(SERVICE): $(SOURCES)
-	go build ${LDFLAGS} -o ${SERVICE}
+	 env GOOS=linux GOSUMDB=off GOPROXY=direct go build ${LDFLAGS} -o ${SERVICE}
 
 # Generate the service config and socket files
 .PHONY: config
