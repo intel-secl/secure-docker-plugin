@@ -23,10 +23,10 @@ require (
 
 replace github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.3.0
 
-replace intel/isecl/lib/common => github.com/intel-secl/common v2.0
+replace intel/isecl/lib/common => github.com/intel-secl/common v2.0.0
 
-replace intel/isecl/lib/flavor => github.com/intel-secl/flavor v2.0
+replace intel/isecl/lib/flavor => github.com/intel-secl/flavor v2.0.0
 
-replace intel/isecl/lib/platform-info => github.com/intel-secl/platform-info v2.0
+replace intel/isecl/lib/platform-info => github.com/intel-secl/platform-info v2.0.0
 
-replace intel/isecl/lib/vml => github.com/intel-secl/volume-management v2.0
+replace intel/isecl/lib/vml => github.com/intel-secl/volume-management-library v2.0.0
