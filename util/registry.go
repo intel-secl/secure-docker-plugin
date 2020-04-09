@@ -12,7 +12,7 @@ import (
 	"net/http"
         //"net/url"
 	"strings"
-	"secure-docker-plugin/config"
+	"secure-docker-plugin/v2/config"
 	"github.com/buger/jsonparser"
 )
 

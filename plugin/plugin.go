@@ -13,11 +13,11 @@ import (
 	"regexp"
 	"strings"
 
-	"secure-docker-plugin/integrity"
-	"secure-docker-plugin/util"
+	"secure-docker-plugin/v2/integrity"
+	"secure-docker-plugin/v2/util"
 
-	pinfo "intel/isecl/lib/platform-info/platforminfo"
-	"intel/isecl/lib/vml"
+	pinfo "intel/isecl/lib/platform-info/v2/platforminfo"
+	"intel/isecl/lib/vml/v2"
 
 	"context"
 	dockerapi "github.com/docker/docker/api"
