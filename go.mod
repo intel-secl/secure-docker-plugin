@@ -1,4 +1,4 @@
-module secure-docker-plugin
+module secure-docker-plugin/v2
 
 require (
 	github.com/Sirupsen/logrus v1.3.0
@@ -13,20 +13,19 @@ require (
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/google/uuid v1.1.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
-	github.com/pkg/errors v0.8.1 // indirect
 	golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
-	intel/isecl/lib/common v1.0.0-Beta
-	intel/isecl/lib/flavor v0.0.0
-	intel/isecl/lib/platform-info v0.0.0
-	intel/isecl/lib/vml v0.0.0
+	intel/isecl/lib/common/v2 v2.0.0
+	intel/isecl/lib/flavor/v2 v2.0.0
+	intel/isecl/lib/platform-info/v2 v2.0.0
+	intel/isecl/lib/vml/v2 v2.0.0
 )
 
 replace github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.3.0
 
-replace intel/isecl/lib/common => github.com/intel-secl/common v2.0.0
+replace intel/isecl/lib/common/v2 => gitlab.devtools.intel.com/sst/isecl/lib/common.git/v2 v2.1/develop
 
-replace intel/isecl/lib/flavor => github.com/intel-secl/flavor v2.0.0
+replace intel/isecl/lib/flavor/v2 => gitlab.devtools.intel.com/sst/isecl/lib/flavor.git/v2 v2.1/develop
 
-replace intel/isecl/lib/platform-info => github.com/intel-secl/platform-info v2.0.0
+replace intel/isecl/lib/platform-info/v2 => gitlab.devtools.intel.com/sst/isecl/lib/platform-info.git/v2 v2.1/develop
 
-replace intel/isecl/lib/vml => github.com/intel-secl/volume-management-library v2.0.0
+replace intel/isecl/lib/vml/v2 => gitlab.devtools.intel.com/sst/isecl/lib/volume-management.git/v2 v2.1/develop

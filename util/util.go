@@ -13,7 +13,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"intel/isecl/lib/flavor"
+	"intel/isecl/lib/flavor/v2"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"

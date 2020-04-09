@@ -11,7 +11,7 @@ import (
 	"os/user"
 	"strconv"
 
-	"secure-docker-plugin/plugin"
+	"secure-docker-plugin/v2/plugin"
 
 	"github.com/docker/go-plugins-helpers/authorization"
 )
