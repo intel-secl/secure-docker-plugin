@@ -28,4 +28,4 @@ replace intel/isecl/lib/flavor/v2 => github.com/intel-secl/flavor/v2 v2.1.0
 
 replace intel/isecl/lib/platform-info/v2 => github.com/intel-secl/platform-info/v2 v2.1.0
 
-replace intel/isecl/lib/vml/v2 => github.com/intel-secl/volume-management/v2 v2.1.0
+replace intel/isecl/lib/vml/v2 => github.com/intel-secl/volume-management-library/v2 v2.1.0
