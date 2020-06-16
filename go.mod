@@ -14,18 +14,18 @@ require (
 	github.com/google/uuid v1.1.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
-	intel/isecl/lib/common/v2 v2.1.0
-	intel/isecl/lib/flavor/v2 v2.1.0
-	intel/isecl/lib/platform-info/v2 v2.1.0
-	intel/isecl/lib/vml/v2 v2.1.0
+	intel/isecl/lib/common/v2 v2.2.0
+	intel/isecl/lib/flavor/v2 v2.2.0
+	intel/isecl/lib/platform-info/v2 v2.2.0
+	intel/isecl/lib/vml/v2 v2.2.0
 )
 
 replace github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.3.0
 
-replace intel/isecl/lib/common/v2 => github.com/intel-secl/common/v2 v2.1.0
+replace intel/isecl/lib/common/v2 => github.com/intel-secl/common/v2 v2.2.0
 
-replace intel/isecl/lib/flavor/v2 => github.com/intel-secl/flavor/v2 v2.1.0
+replace intel/isecl/lib/flavor/v2 => github.com/intel-secl/flavor/v2 v2.2.0
 
-replace intel/isecl/lib/platform-info/v2 => github.com/intel-secl/platform-info/v2 v2.1.0
+replace intel/isecl/lib/platform-info/v2 => github.com/intel-secl/platform-info/v2 v2.2.0
 
-replace intel/isecl/lib/vml/v2 => github.com/intel-secl/volume-management-library/v2 v2.1.0
+replace intel/isecl/lib/vml/v2 => github.com/intel-secl/volume-management-library/v2 v2.2.0
