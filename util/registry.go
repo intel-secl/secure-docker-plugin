@@ -10,9 +10,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-        //"net/url"
 	"strings"
-	"secure-docker-plugin/v2/config"
+	"secure-docker-plugin/v3/config"
 	"github.com/buger/jsonparser"
 )
 
