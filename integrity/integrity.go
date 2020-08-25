@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"secure-docker-plugin/v2/util"
+	"secure-docker-plugin/v3/util"
 )
 
 const (
