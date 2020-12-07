@@ -54,7 +54,11 @@ func GetImageFlavor(imageUUID string) (flavor.Image, error) {
 		return flvr, err
 	}
 
-	json.Unmarshal(f, &flvr)
+	err = json.Unmarshal(f, &flvr)
+	if err != nil {
+		log.Println("Unable to unmarshal image flavor - %v", err)
+		return flvr, err
+	}
 	return flvr, nil
 }
 
@@ -62,7 +66,10 @@ func GetImageFlavor(imageUUID string) (flavor.Image, error) {
 func GetImageRef(req authorization.Request) string {
 
 	var config container.Config
-	json.Unmarshal(req.RequestBody, &config)
+	err := json.Unmarshal(req.RequestBody, &config)
+	if err != nil {
+		log.Println("Unable to unmarshal request - %v", err)
+	}
 	return config.Image
 }
 
