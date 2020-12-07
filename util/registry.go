@@ -151,11 +151,17 @@ func newRequest(options requestOptions) ([]byte, error) {
 		return nil, err
 	}
 
+	defer func() {
+		derr := response.Body.Close()
+		if derr != nil {
+			log.Println("Error while closing response body", derr)
+		}
+	}()
+
 	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	response.Body.Close()
 	return data, nil
 }
