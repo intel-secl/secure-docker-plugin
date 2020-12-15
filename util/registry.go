@@ -7,12 +7,12 @@ package util
 
 import (
 	"crypto/tls"
+	"github.com/buger/jsonparser"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 	"secure-docker-plugin/v3/config"
-	"github.com/buger/jsonparser"
+	"strings"
 )
 
 const (
@@ -50,14 +50,14 @@ func GetDigestFromRegistry(imageRef string) (string, error) {
 	ev := &config.EnvVariables{}
 	ev.GetEnv()
 	username, password, scheme, skipVerify := ev.Username, ev.Password, ev.SchemeType, ev.SkipVerify
-        
+
 	options := requestOptions{}
 
-//	options.headers = map[string]string{"Accept": "application/vnd.docker.distribution.manifest.v2+json"}
-        token, err = getToken(username, password, image)
-        if err != nil {
-                 return "", err
-        }
+	//	options.headers = map[string]string{"Accept": "application/vnd.docker.distribution.manifest.v2+json"}
+	token, err = getToken(username, password, image)
+	if err != nil {
+		return "", err
+	}
 	if regAddress == "docker.io" {
 
 		options.url = defaultDockerHub + version + image + "/manifests/" + tag
@@ -68,8 +68,8 @@ func GetDigestFromRegistry(imageRef string) (string, error) {
 
 		options.url = scheme + "://" + regAddress + version + image + "/manifests/" + tag
 	}
-        options.headers = map[string]string{"Accept": "application/vnd.docker.distribution.manifest.v2+json", "Authorization": "Bearer " + token}
-        options.transport = transport(skipVerify)
+	options.headers = map[string]string{"Accept": "application/vnd.docker.distribution.manifest.v2+json", "Authorization": "Bearer " + token}
+	options.transport = transport(skipVerify)
 	data, err = newRequest(options)
 	if err != nil {
 		return "", err
@@ -88,9 +88,9 @@ func getToken(username, password, image string) (string, error) {
 
 	options := requestOptions{}
 	options.url = dockerHubAuthHead + image + dockerHubAuthTail
-	if username != "" && password != "" { 
-        	options.auth = getAuth(username, password)
-        }
+	if username != "" && password != "" {
+		options.auth = getAuth(username, password)
+	}
 	data, err := newRequest(options)
 	if err != nil {
 		return "", err
@@ -110,14 +110,13 @@ func getAuth(username, password string) string {
 	return auth
 }
 
-
 func transport(skipVerify bool) *http.Transport {
-        tr := &http.Transport{
-                        TLSClientConfig: &tls.Config{
-                                InsecureSkipVerify: skipVerify,
-                        },
-                        Proxy: http.ProxyFromEnvironment,
-                }
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: skipVerify,
+		},
+		Proxy: http.ProxyFromEnvironment,
+	}
 	return tr
 }
 

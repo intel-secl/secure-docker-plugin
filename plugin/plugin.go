@@ -96,7 +96,7 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 		if strings.HasSuffix(notaryURL, "/") {
 			notaryURL = notaryURL[:len(notaryURL)-1]
 		}
-	
+
 		integrityVerified = integrity.VerifyIntegrity(notaryURL, imageRef)
 	}
 
