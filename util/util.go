@@ -47,13 +47,17 @@ func GetUUIDFromImageID(imageID string) string {
 func GetImageFlavor(imageUUID string) (flavor.Image, error) {
 
 	var flvr flavor.Image
-	log.Println(imageUUID)
+	log.Printf("Fetching flavor for image id %s", imageUUID)
 	f, err := exec.Command("wlagent", "fetch-flavor", imageUUID).Output()
 	if err != nil {
 		log.Println("Unable to fetch image flavor from the workload agent - %v", err)
 		return flvr, err
 	}
 
+	if len(f) == 0 {
+		log.Printf("There is no flavor for given image id %s", imageUUID)
+		return flvr, nil
+	}
 	err = json.Unmarshal(f, &flvr)
 	if err != nil {
 		log.Println("Unable to unmarshal image flavor - %v", err)
