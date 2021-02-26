@@ -15,8 +15,8 @@ require (
 )
 
 replace (
-	intel/isecl/lib/common/v3 => gitlab.devtools.intel.com/sst/isecl/lib/common.git/v3 v3.4/develop
-	intel/isecl/lib/flavor/v3 => gitlab.devtools.intel.com/sst/isecl/lib/flavor.git/v3 v3.4/develop
-	intel/isecl/lib/platform-info/v3 => gitlab.devtools.intel.com/sst/isecl/lib/platform-info.git/v3 v3.4/develop
-	intel/isecl/lib/vml/v3 => gitlab.devtools.intel.com/sst/isecl/lib/volume-management.git/v3 v3.4/develop
+	intel/isecl/lib/common/v3 => github.com/intel-secl/common/v3 v3.4.0
+	intel/isecl/lib/flavor/v3 => github.com/intel-secl/flavor/v3 v3.4.0
+	intel/isecl/lib/platform-info/v3 => github.com/intel-secl/platform-info/v3 v3.4.0
+	intel/isecl/lib/vml/v3 => github.com/intel-secl/volume-management-library/v3 v3.4.0
 )
