@@ -9,11 +9,12 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/json"
-	"log"
-	"os/exec"
-	"strings"
-
 	"intel/isecl/lib/flavor/v3"
+	"log"
+	"net"
+	"net/rpc"
+	"strings"
+	"time"
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
@@ -21,7 +22,11 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-plugins-helpers/authorization"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
+
+const WlagentSocketFile = "/var/run/workload-agent/wlagent.sock"
+const WlagentSocketDialTimeout = "5s"
 
 type securityMetaData struct {
 	RequiresConfidentiality bool
@@ -43,22 +48,46 @@ func GetUUIDFromImageID(imageID string) string {
 	return imageUUID.String()
 }
 
+type FlavorInfo struct {
+	ImageID string
+}
+
+type OutFlavor struct {
+	ReturnCode  bool
+	ImageFlavor string
+}
+
 // GetImageFlavor is used to retrieve image flavor from Workload Agent
 func GetImageFlavor(imageUUID string) (flavor.Image, error) {
 
 	var flvr flavor.Image
 	log.Printf("Fetching flavor for image id %s", imageUUID)
-	f, err := exec.Command("wlagent", "fetch-flavor", imageUUID).Output()
+	timeOut, err := time.ParseDuration(WlagentSocketDialTimeout)
+	if err != nil {
+		return flvr, errors.Errorf("Error while parsing time %s", err.Error())
+	}
+
+	conn, err := net.DialTimeout("unix", WlagentSocketFile, timeOut)
+	if err != nil {
+		log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
+		return flvr, nil
+	}
+	client := rpc.NewClient(conn)
+	defer client.Close()
+	var outFlavor OutFlavor
+	var args = FlavorInfo{
+		ImageID: imageUUID,
+	}
+	err = client.Call("VirtualMachine.FetchFlavor", &args, &outFlavor)
 	if err != nil {
 		log.Println("Unable to fetch image flavor from the workload agent - %v", err)
 		return flvr, err
 	}
-
-	if len(f) == 0 {
+	if len(outFlavor.ImageFlavor) == 0 {
 		log.Printf("There is no flavor for given image id %s", imageUUID)
 		return flvr, nil
 	}
-	err = json.Unmarshal(f, &flvr)
+	err = json.Unmarshal([]byte(outFlavor.ImageFlavor), &flvr)
 	if err != nil {
 		log.Println("Unable to unmarshal image flavor - %v", err)
 		return flvr, err

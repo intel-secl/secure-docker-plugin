@@ -8,13 +8,14 @@ package plugin
 import (
 	"encoding/json"
 	"log"
+	"net"
+	"net/rpc"
 	"net/url"
-	"os/exec"
 	"regexp"
-	"strings"
-
 	"secure-docker-plugin/v3/integrity"
 	"secure-docker-plugin/v3/util"
+	"strings"
+	"time"
 
 	pinfo "intel/isecl/lib/platform-info/v3/platforminfo"
 	"intel/isecl/lib/vml/v3"
@@ -35,6 +36,10 @@ const (
 type SecureDockerPlugin struct {
 	// Docker client
 	client *dockerclient.Client
+}
+
+type ManifestString struct {
+	Manifest string
 }
 
 // NewPlugin creates a new instance of the secure docker plugin
@@ -175,7 +180,29 @@ func createTrustReport(containerID string) {
 	}
 	manifestByte, err := json.Marshal(manifest)
 	log.Println("Manifest: ", string(manifestByte))
-	_, err = exec.Command("wlagent", "create-instance-trust-report", string(manifestByte)).CombinedOutput()
+	if err != nil {
+		log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
+		return
+	}
+
+	timeOut, err := time.ParseDuration(util.WlagentSocketDialTimeout)
+	if err != nil {
+		log.Printf("Error while parsing time %s", err.Error())
+		return
+	}
+
+	conn, err := net.DialTimeout("unix", util.WlagentSocketFile, timeOut)
+	if err != nil {
+		log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
+		return
+	}
+	rpcClient := rpc.NewClient(conn)
+	defer rpcClient.Close()
+	var args = ManifestString{
+		Manifest: string(manifestByte),
+	}
+	var status bool
+	err = rpcClient.Call("VirtualMachine.CreateInstanceTrustReport", &args, &status)
 	if err != nil {
 		log.Println("Failed to create image trust report: ", err.Error())
 	}
