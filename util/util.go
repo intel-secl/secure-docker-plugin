@@ -42,9 +42,7 @@ type securityMetaData struct {
 
 // GetUUIDFromImageID is used to convert image id into uuid format
 func GetUUIDFromImageID(imageID string) string {
-
-	var NameSpaceDNS = uuid.Must(uuid.Parse("6ba7b810-9dad-11d1-80b4-00c04fd430c8"))
-	imageUUID := uuid.NewHash(md5.New(), NameSpaceDNS, []byte(imageID), 4)
+	imageUUID := uuid.NewHash(md5.New(), uuid.NameSpaceDNS, []byte(imageID), 4)
 	return imageUUID.String()
 }
 
@@ -72,6 +70,8 @@ func GetImageFlavor(imageUUID string) (flavor.Image, error) {
 		log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
 		return flvr, nil
 	}
+	defer conn.Close()
+
 	client := rpc.NewClient(conn)
 	defer client.Close()
 	var outFlavor OutFlavor
@@ -80,7 +80,7 @@ func GetImageFlavor(imageUUID string) (flavor.Image, error) {
 	}
 	err = client.Call("VirtualMachine.FetchFlavor", &args, &outFlavor)
 	if err != nil {
-		log.Println("Unable to fetch image flavor from the workload agent - %v", err)
+		log.Printf("Unable to fetch image flavor from the workload agent - %v", err)
 		return flvr, err
 	}
 	if len(outFlavor.ImageFlavor) == 0 {
@@ -89,7 +89,7 @@ func GetImageFlavor(imageUUID string) (flavor.Image, error) {
 	}
 	err = json.Unmarshal([]byte(outFlavor.ImageFlavor), &flvr)
 	if err != nil {
-		log.Println("Unable to unmarshal image flavor - %v", err)
+		log.Printf("Unable to unmarshal image flavor - %v", err)
 		return flvr, err
 	}
 	return flvr, nil
@@ -101,7 +101,7 @@ func GetImageRef(req authorization.Request) string {
 	var config container.Config
 	err := json.Unmarshal(req.RequestBody, &config)
 	if err != nil {
-		log.Println("Unable to unmarshal request - %v", err)
+		log.Printf("Unable to unmarshal request - %v", err)
 	}
 	return config.Image
 }
@@ -109,14 +109,14 @@ func GetImageRef(req authorization.Request) string {
 // GetImageMetadata returns the image metadata for a container image
 func GetImageMetadata(imageRef string) (*types.ImageInspect, error) {
 
-	cli, err := client.NewEnvClient()
+	client, err := client.NewClientWithOpts()
 	if err != nil {
 		return nil, err
 	}
-
-	imageInspect, _, err := cli.ImageInspectWithRaw(context.Background(), imageRef)
+	defer client.Close()
+	imageInspect, _, err := client.ImageInspectWithRaw(context.Background(), imageRef)
 	if err != nil {
-		log.Println("Couldn't retrieve image metadata from name.", err)
+		log.Printf("Couldn't retrieve image metadata from name: %v", err)
 		return nil, nil
 	}
 
@@ -128,7 +128,7 @@ func GetImageID(imageRef string) (string, error) {
 
 	imageMetadata, err := GetImageMetadata(imageRef)
 	if err != nil {
-		log.Println("Couldn't retrieve image metadata.", err)
+		log.Printf("Couldn't retrieve image metadata: %v", err)
 		return "", err
 	}
 
@@ -136,7 +136,7 @@ func GetImageID(imageRef string) (string, error) {
 		//Get the sha of an image using docker api
 		digest, err := GetDigestFromRegistry(imageRef)
 		if err != nil {
-			log.Println("Couldn't retrieve image digest from registry.", err)
+			log.Printf("Couldn't retrieve image digest from registry: %v", err)
 			return "", err
 		}
 		return strings.Split(digest, ":")[1], nil
@@ -184,7 +184,8 @@ func GetRegistryAddr(imageRef string) (string, string, string, error) {
 func GetSecurityMetaData(imageID string) (*securityMetaData, error) {
 
 	var secData securityMetaData
-	client, err := client.NewEnvClient()
+	client, err := client.NewClientWithOpts()
+	defer client.Close()
 	if err != nil {
 		return nil, err
 	}

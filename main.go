@@ -34,8 +34,8 @@ func main() {
 
 	defer recovery()
 
-	// Create plugin instance
-	plugin, err := plugin.NewPlugin(*flDockerHost)
+	// Create sdp instance
+	sdp, err := plugin.NewPlugin(*flDockerHost)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,11 +43,12 @@ func main() {
 	// Start service handler on the local sock
 	u, _ := user.Lookup("root")
 	gid, _ := strconv.Atoi(u.Gid)
-	handler := authorization.NewHandler(plugin)
+	handler := authorization.NewHandler(sdp)
 	if err := handler.ServeUnix(pluginSocket, gid); err != nil {
 		log.Fatal(err)
 	}
 
 	wait := make(chan struct{})
 	<-wait
+	_ = sdp.Cleanup()
 }

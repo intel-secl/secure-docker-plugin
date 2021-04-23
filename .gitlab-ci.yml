@@ -1,5 +1,6 @@
 ---
 stages:
+  - build
   - scan
 
 variables:
@@ -10,31 +11,38 @@ variables:
   https_proxy: "${HTTPS_PROXY}"
   no_proxy: "${NO_PROXY}"
 
+compile:
+  stage: build
+  image: golang:1.14
+  tags:
+    - go
+  script:
+    - make secure-docker-plugin
 
 Stylechecker:
-    stage: scan
-    only:
-      - merge_requests
-    image: gta-devel
-    tags:
-       - gta
-    script:
-       - gofmt -l .
-       - |
-              if [ "$(gofmt -l . | wc -l)"  -gt 0 ]; then
-                    exit 1
-              fi
-       
+  stage: scan
+  only:
+    - merge_requests
+  image: gta-devel
+  tags:
+    - gta
+  script:
+    - gofmt -l .
+    - |
+      if [ "$(gofmt -l . | wc -l)"  -gt 0 ]; then
+            exit 1
+      fi
+
 checkmarx:
   stage: scan
   only:
-     - merge_requests
+    - merge_requests
   allow_failure: true
   services:
-      - docker:dind
+    - docker:dind
   image:
     name: ${DOCKER_REGISTRY_SERVER}:${DOCKER_REGISTRY_PORT}/checkmarx:isecl
-    entrypoint: ['']
+    entrypoint: [ '' ]
   tags:
     - docker-checkmarx
   script:

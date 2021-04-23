@@ -21,7 +21,6 @@ import (
 	"intel/isecl/lib/vml/v3"
 
 	"context"
-	dockerapi "github.com/docker/docker/api"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/go-plugins-helpers/authorization"
 )
@@ -44,12 +43,17 @@ type ManifestString struct {
 
 // NewPlugin creates a new instance of the secure docker plugin
 func NewPlugin(dockerHost string) (*SecureDockerPlugin, error) {
-	client, err := dockerclient.NewClient(dockerHost, dockerapi.DefaultVersion, nil, nil)
+	client, err := dockerclient.NewClientWithOpts(dockerclient.WithHost(dockerHost),
+		dockerclient.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
 
 	return &SecureDockerPlugin{client: client}, nil
+}
+
+func (plugin *SecureDockerPlugin) Cleanup() error {
+	return plugin.client.Close()
 }
 
 // AuthZReq acts only on image run (containers/create) requests.
@@ -131,7 +135,7 @@ func (plugin *SecureDockerPlugin) AuthZRes(req authorization.Request) authorizat
 		reqURLSplit := strings.Split(reqURL.Path, "/")
 		containerID := reqURLSplit[len(reqURLSplit)-2]
 		if isValidContainerID(containerID) {
-			createTrustReport(containerID)
+			plugin.createTrustReport(containerID)
 		}
 	}
 
@@ -144,66 +148,66 @@ func isValidContainerID(containerID string) bool {
 	return r.MatchString(containerID)
 }
 
-func createTrustReport(containerID string) {
+func (plugin *SecureDockerPlugin) createTrustReport(containerID string) {
 	encrypted := false
 	integrityEnforced := false
-	client, err := dockerclient.NewEnvClient()
-	if err != nil {
-		log.Println("Failed to get docker client: ", err.Error())
-	}
 
-	instanceInfo, err := client.ContainerInspect(context.Background(), containerID)
+	instanceInfo, err := plugin.client.ContainerInspect(context.Background(), containerID)
 	if err != nil {
 		log.Println("Failed to get instance info: ", err.Error())
-	}
-	imageID := strings.TrimPrefix(instanceInfo.Image, "sha256:")
-	securityMetaData, err := util.GetSecurityMetaData(imageID)
-	if err != nil {
-		log.Println("Error getting security meta data: ", err)
-	}
-	if securityMetaData != nil && securityMetaData.RequiresConfidentiality == true {
-		encrypted = true
-	}
-	// get host hardware UUID
-	log.Println("Retrieving host hardware UUID...")
-	hardwareUUID, err := pinfo.HardwareUUID()
-	if err != nil {
-		log.Println("Unable to get the host hardware UUID")
-	}
-	containerUUID := util.GetUUIDFromImageID(containerID)
-	imageUUID := util.GetUUIDFromImageID(imageID)
-	log.Println("The host hardware UUID is :", hardwareUUID)
-	log.Println("Container id : ", containerID)
-	manifest, err := vml.CreateContainerManifest(containerUUID, hardwareUUID, imageUUID, encrypted, integrityEnforced)
-	if err != nil {
-		log.Println("Unable to create manifest")
-	}
-	manifestByte, err := json.Marshal(manifest)
-	log.Println("Manifest: ", string(manifestByte))
-	if err != nil {
-		log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
-		return
-	}
+	} else {
+		imageID := strings.TrimPrefix(instanceInfo.Image, "sha256:")
+		securityMetaData, err := util.GetSecurityMetaData(imageID)
+		if err != nil {
+			log.Println("Error getting security meta data: ", err)
+		}
+		if securityMetaData != nil {
+			encrypted = securityMetaData.RequiresConfidentiality
+			integrityEnforced = securityMetaData.RequiresIntegrity
+		}
+		// get host hardware UUID
+		log.Println("Retrieving host hardware UUID...")
+		hardwareUUID, err := pinfo.HardwareUUID()
+		if err != nil {
+			log.Println("Unable to get the host hardware UUID")
+		}
+		containerUUID := util.GetUUIDFromImageID(containerID)
+		imageUUID := util.GetUUIDFromImageID(imageID)
+		log.Println("The host hardware UUID is :", hardwareUUID)
+		log.Println("Container id : ", containerID)
+		manifest, err := vml.CreateContainerManifest(containerUUID, hardwareUUID, imageUUID, encrypted, integrityEnforced)
+		if err != nil {
+			log.Println("Unable to create manifest")
+		}
+		manifestByte, err := json.Marshal(manifest)
+		log.Println("Manifest: ", string(manifestByte))
+		if err != nil {
+			log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
+			return
+		}
 
-	timeOut, err := time.ParseDuration(util.WlagentSocketDialTimeout)
-	if err != nil {
-		log.Printf("Error while parsing time %s", err.Error())
-		return
-	}
+		timeOut, err := time.ParseDuration(util.WlagentSocketDialTimeout)
+		if err != nil {
+			log.Printf("Error while parsing time %s", err.Error())
+			return
+		}
 
-	conn, err := net.DialTimeout("unix", util.WlagentSocketFile, timeOut)
-	if err != nil {
-		log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
-		return
-	}
-	rpcClient := rpc.NewClient(conn)
-	defer rpcClient.Close()
-	var args = ManifestString{
-		Manifest: string(manifestByte),
-	}
-	var status bool
-	err = rpcClient.Call("VirtualMachine.CreateInstanceTrustReport", &args, &status)
-	if err != nil {
-		log.Println("Failed to create image trust report: ", err.Error())
+		conn, err := net.DialTimeout("unix", util.WlagentSocketFile, timeOut)
+		if err != nil {
+			log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
+			return
+		}
+		defer conn.Close()
+
+		rpcClient := rpc.NewClient(conn)
+		defer rpcClient.Close()
+		var args = ManifestString{
+			Manifest: string(manifestByte),
+		}
+		var status bool
+		err = rpcClient.Call("VirtualMachine.CreateInstanceTrustReport", &args, &status)
+		if err != nil {
+			log.Println("Failed to create image trust report: ", err.Error())
+		}
 	}
 }
