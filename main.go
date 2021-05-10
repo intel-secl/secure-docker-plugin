@@ -7,13 +7,11 @@ package main
 
 import (
 	"flag"
+	"github.com/docker/go-plugins-helpers/authorization"
 	"log"
 	"os/user"
-	"strconv"
-
 	"secure-docker-plugin/v3/plugin"
-
-	"github.com/docker/go-plugins-helpers/authorization"
+	"strconv"
 )
 
 const (
@@ -29,6 +27,8 @@ func recovery() {
 }
 
 func main() {
+	log.Println("Plugin init")
+
 	flDockerHost := flag.String("host", defaultDockerHost, "Specifies the host where docker is running")
 	flag.Parse()
 
@@ -41,14 +41,24 @@ func main() {
 	}
 
 	// Start service handler on the local sock
-	u, _ := user.Lookup("root")
-	gid, _ := strconv.Atoi(u.Gid)
+	u, err := user.Lookup("root")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	gid, err := strconv.Atoi(u.Gid)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	handler := authorization.NewHandler(sdp)
 	if err := handler.ServeUnix(pluginSocket, gid); err != nil {
 		log.Fatal(err)
 	}
 
-	wait := make(chan struct{})
-	<-wait
-	_ = sdp.Cleanup()
+	log.Println("Plugin exit")
+	err = sdp.Cleanup()
+	if err != nil {
+		log.Printf("Error closing Docker client: %v", err)
+	}
 }
