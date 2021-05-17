@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/rpc"
 	"net/url"
+	"os"
 	"regexp"
 	"secure-docker-plugin/v3/integrity"
 	"secure-docker-plugin/v3/util"
@@ -102,6 +103,12 @@ func (plugin *SecureDockerPlugin) getWlaClient() (*rpc.Client, error) {
 
 	if plugin.wlaClient != nil {
 		return plugin.wlaClient, nil
+	}
+
+	_, err = os.Stat(plugin.wlaSocketFilePath)
+	if err != nil {
+		log.Printf("%s file does not exist", plugin.wlaSocketFilePath)
+		return nil, nil
 	}
 
 	timeOut, _ := time.ParseDuration(util.WlagentSocketDialTimeout)
@@ -200,6 +207,10 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 		return authorization.Response{Allow: false}
 	}
 
+	// ALlow docker to launch images when wlagent client is nil
+	if wlac == nil {
+		return authorization.Response{Allow: true}
+	}
 	// Get Image flavor
 	flavor, err := util.GetImageFlavor(wlac, imageUUID)
 	if err != nil {
@@ -266,6 +277,11 @@ func (plugin *SecureDockerPlugin) AuthZRes(req authorization.Request) authorizat
 		}
 		log.Println("Error retrieving the image id.", err)
 		return authorization.Response{Allow: false}
+	}
+
+	// ALlow docker to launch images when wlagent client is nil
+	if wlac == nil {
+		return authorization.Response{Allow: true}
 	}
 
 	// Checking reqURL Path for the request type
