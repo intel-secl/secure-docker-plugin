@@ -6,6 +6,7 @@ package integrity
  */
 
 import (
+	dockerclient "github.com/docker/docker/client"
 	"log"
 	"os/exec"
 	"strings"
@@ -21,10 +22,10 @@ const (
 	imageTagShaSeparator     = "@sha256:"
 )
 
-// getImageName returns the image name and tag for a conatiner image
-func getImageName(imageRef string) (string, error) {
+// getImageName returns the image name and tag for a container image
+func getImageName(dc *dockerclient.Client, imageRef string) (string, error) {
 
-	imageMetadata, err := util.GetImageMetadata(imageRef)
+	imageMetadata, err := util.GetImageMetadata(dc, imageRef)
 	if err != nil {
 		log.Println("Couldn't retrieve image metadata.", err)
 		return "", err
@@ -37,8 +38,8 @@ func getImageName(imageRef string) (string, error) {
 	return imageMetadata.RepoTags[0], nil
 }
 
-// VerifyIntegrity is used for veryfing signature with notary server
-func VerifyIntegrity(notaryServerURL, imageRef string) bool {
+// VerifyIntegrity is used for verifying signature with notary server
+func VerifyIntegrity(dc *dockerclient.Client, notaryServerURL, imageRef string) bool {
 
 	if notaryServerURL == "" {
 		log.Println("Notary URL is not specified in flavor.")
@@ -48,7 +49,7 @@ func VerifyIntegrity(notaryServerURL, imageRef string) bool {
 	// Kubelet passes along image references as sha sums
 	// we need to convert these back to readable names to proceed further
 	if strings.HasPrefix(imageRef, imageNameShaPrefix) {
-		image, err := getImageName(imageRef)
+		image, err := getImageName(dc, imageRef)
 		if err != nil {
 			log.Println("Error retrieving the image name and tag.", err)
 			return false

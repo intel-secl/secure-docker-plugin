@@ -7,6 +7,8 @@ package plugin
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
+	"gopkg.in/retry.v1"
 	"log"
 	"net"
 	"net/rpc"
@@ -15,6 +17,7 @@ import (
 	"secure-docker-plugin/v3/integrity"
 	"secure-docker-plugin/v3/util"
 	"strings"
+	"sync"
 	"time"
 
 	pinfo "intel/isecl/lib/platform-info/v3/platforminfo"
@@ -34,34 +37,131 @@ const (
 // SecureDockerPlugin struct definition
 type SecureDockerPlugin struct {
 	// Docker client
-	client *dockerclient.Client
+	dockerClient *dockerclient.Client
+	dockerHost   string
+	// Wlagent client
+	wlaClient         *rpc.Client
+	wlaSocketFilePath string
+	dcmtx             sync.Mutex
+	wlamtx            sync.Mutex
 }
 
 type ManifestString struct {
 	Manifest string
 }
 
-// NewPlugin creates a new instance of the secure docker plugin
-func NewPlugin(dockerHost string) (*SecureDockerPlugin, error) {
-	client, err := dockerclient.NewClientWithOpts(dockerclient.WithHost(dockerHost),
-		dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
+func (plugin *SecureDockerPlugin) closeDockerClient() {
+	plugin.dcmtx.Lock()
+	defer plugin.dcmtx.Unlock()
+	if plugin.dockerClient != nil {
+		plugin.dockerClient.Close()
+	}
+	plugin.dockerClient = nil
+}
+
+func (plugin *SecureDockerPlugin) closeWlaClient() {
+	plugin.wlamtx.Lock()
+	defer plugin.wlamtx.Unlock()
+	if plugin.wlaClient != nil {
+		plugin.wlaClient.Close()
+	}
+	plugin.wlaClient = nil
+}
+
+func (plugin *SecureDockerPlugin) getDockerClient() (*dockerclient.Client, error) {
+	var err error
+	plugin.dcmtx.Lock()
+	defer plugin.dcmtx.Unlock()
+	if plugin.dockerClient != nil {
+		return plugin.dockerClient, nil
 	}
 
-	return &SecureDockerPlugin{client: client}, nil
+	attempts := retry.Regular{
+		Total: 30 * time.Second,
+		Delay: 500 * time.Millisecond,
+	}
+	for attempt := attempts.Start(nil); attempt.Next(); {
+		log.Printf("Attempt %v to initialize docker client", attempt.Count())
+		plugin.dockerClient, err = dockerclient.NewClientWithOpts(dockerclient.WithHost(plugin.dockerHost),
+			dockerclient.WithAPIVersionNegotiation())
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "SDP: Failed to initialize Docker engine client")
+	}
+
+	return plugin.dockerClient, nil
+}
+
+func (plugin *SecureDockerPlugin) getWlaClient() (*rpc.Client, error) {
+	var err error
+	plugin.wlamtx.Lock()
+	defer plugin.wlamtx.Unlock()
+
+	if plugin.wlaClient != nil {
+		return plugin.wlaClient, nil
+	}
+
+	timeOut, _ := time.ParseDuration(util.WlagentSocketDialTimeout)
+	attempts := retry.Regular{
+		Total: 30 * time.Second,
+		Delay: 500 * time.Millisecond,
+	}
+	var conn net.Conn
+	for attempt := attempts.Start(nil); attempt.Next(); {
+		log.Printf("Attempt %v to initialize WLA client", attempt.Count())
+		conn, err = net.DialTimeout("unix", plugin.wlaSocketFilePath, timeOut)
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "SDP: Failed to initialize WLA client")
+	}
+
+	plugin.wlaClient = rpc.NewClient(conn)
+	return plugin.wlaClient, nil
+}
+
+// NewPlugin creates a new instance of the secure docker plugin
+func NewPlugin(dockerHost, wlagentSocketFile string) (*SecureDockerPlugin, error) {
+	sdp := &SecureDockerPlugin{
+		dockerHost:        dockerHost,
+		wlaSocketFilePath: wlagentSocketFile,
+	}
+	if _, err := sdp.getDockerClient(); err != nil {
+		return nil, err
+	}
+	if _, err := sdp.getWlaClient(); err != nil {
+		return nil, err
+	}
+	log.Println("SDP init OK")
+	return sdp, nil
 }
 
 func (plugin *SecureDockerPlugin) Cleanup() error {
-	return plugin.client.Close()
+	dockerCleanupErr := plugin.dockerClient.Close()
+	wlaCleanupErr := plugin.wlaClient.Close()
+	return errors.Errorf("Plugin client cleanup err: Docker %v | WLA - %v",
+		dockerCleanupErr, wlaCleanupErr)
 }
 
 // AuthZReq acts only on image run (containers/create) requests.
 // Remaining requests are passed through by default.
 func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorization.Response {
 	//Parse request and the request body
-	reqURI, _ := url.QueryUnescape(req.RequestURI)
-	reqURL, _ := url.ParseRequestURI(reqURI)
+	reqURI, err := url.QueryUnescape(req.RequestURI)
+	if err != nil {
+		log.Println("Error retrieving the request URI", err)
+		return authorization.Response{Allow: false}
+	}
+	reqURL, err := url.ParseRequestURI(reqURI)
+	if err != nil {
+		log.Println("Error retrieving the request URL", err)
+		return authorization.Response{Allow: false}
+	}
 
 	// Checking reqURL Path for the request type
 	// If request type is not /containers/create, then passthrough the request
@@ -74,8 +174,15 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 	// Extract image reference from request
 	imageRef := util.GetImageRef(req)
 
+	dc, err := plugin.getDockerClient()
+	if err != nil {
+		log.Println("Error retrieving the image id.", err)
+		plugin.closeDockerClient()
+		return authorization.Response{Allow: false}
+	}
+
 	// Image ID is needed to fetch image flavor
-	imageID, err := util.GetImageID(imageRef)
+	imageID, err := util.GetImageID(dc, imageRef)
 	if err != nil {
 		log.Println("Error retrieving the image id.", err)
 		return authorization.Response{Allow: false}
@@ -84,9 +191,21 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 	// Convert image id into uuid format
 	imageUUID := util.GetUUIDFromImageID(imageID)
 
-	// Get Image flavor
-	flavor, err := util.GetImageFlavor(imageUUID)
+	wlac, err := plugin.getWlaClient()
 	if err != nil {
+		if strings.Contains(err.Error(), "connection is shut down") {
+			plugin.closeWlaClient()
+		}
+		log.Println("Error retrieving the image id.", err)
+		return authorization.Response{Allow: false}
+	}
+
+	// Get Image flavor
+	flavor, err := util.GetImageFlavor(wlac, imageUUID)
+	if err != nil {
+		if strings.Contains(err.Error(), "connection is shut down") {
+			plugin.closeWlaClient()
+		}
 		log.Println("Error retrieving the image flavor.", err)
 		return authorization.Response{Allow: false}
 	}
@@ -106,7 +225,7 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 			notaryURL = notaryURL[:len(notaryURL)-1]
 		}
 
-		integrityVerified = integrity.VerifyIntegrity(notaryURL, imageRef)
+		integrityVerified = integrity.VerifyIntegrity(dc, notaryURL, imageRef)
 	}
 
 	if integrityVerified {
@@ -122,8 +241,32 @@ func (plugin *SecureDockerPlugin) AuthZReq(req authorization.Request) authorizat
 // All responses are allowed by default.
 func (plugin *SecureDockerPlugin) AuthZRes(req authorization.Request) authorization.Response {
 	//Parse request and the request body
-	reqURI, _ := url.QueryUnescape(req.RequestURI)
-	reqURL, _ := url.ParseRequestURI(reqURI)
+	reqURI, err := url.QueryUnescape(req.RequestURI)
+	if err != nil {
+		log.Println("AuthZRes: Error parsing req")
+		return authorization.Response{Allow: false}
+	}
+	reqURL, err := url.ParseRequestURI(reqURI)
+	if err != nil {
+		log.Println("AuthZRes: Error parsing request URI")
+		return authorization.Response{Allow: false}
+	}
+
+	dc, err := plugin.getDockerClient()
+	if err != nil {
+		plugin.closeDockerClient()
+		log.Println("Error retrieving the image id.", err)
+		return authorization.Response{Allow: false}
+	}
+
+	wlac, err := plugin.getWlaClient()
+	if err != nil {
+		if strings.Contains(err.Error(), "connection is shut down") {
+			plugin.closeWlaClient()
+		}
+		log.Println("Error retrieving the image id.", err)
+		return authorization.Response{Allow: false}
+	}
 
 	// Checking reqURL Path for the request type
 	// If request type is not /containers/(id or name)/start, then passthrough the request
@@ -135,7 +278,10 @@ func (plugin *SecureDockerPlugin) AuthZRes(req authorization.Request) authorizat
 		reqURLSplit := strings.Split(reqURL.Path, "/")
 		containerID := reqURLSplit[len(reqURLSplit)-2]
 		if isValidContainerID(containerID) {
-			plugin.createTrustReport(containerID)
+			err = createTrustReport(dc, wlac, containerID)
+			if err != nil && strings.Contains(err.Error(), "connection is shut down") {
+				plugin.closeWlaClient()
+			}
 		}
 	}
 
@@ -148,18 +294,18 @@ func isValidContainerID(containerID string) bool {
 	return r.MatchString(containerID)
 }
 
-func (plugin *SecureDockerPlugin) createTrustReport(containerID string) {
+func createTrustReport(dc *dockerclient.Client, wlac *rpc.Client, containerID string) error {
 	encrypted := false
 	integrityEnforced := false
-
-	instanceInfo, err := plugin.client.ContainerInspect(context.Background(), containerID)
+	instanceInfo, err := dc.ContainerInspect(context.Background(), containerID)
 	if err != nil {
 		log.Println("Failed to get instance info: ", err.Error())
 	} else {
 		imageID := strings.TrimPrefix(instanceInfo.Image, "sha256:")
-		securityMetaData, err := util.GetSecurityMetaData(imageID)
+		securityMetaData, err := util.GetSecurityMetaData(dc, imageID)
 		if err != nil {
 			log.Println("Error getting security meta data: ", err)
+			return nil
 		}
 		if securityMetaData != nil {
 			encrypted = securityMetaData.RequiresConfidentiality
@@ -170,6 +316,7 @@ func (plugin *SecureDockerPlugin) createTrustReport(containerID string) {
 		hardwareUUID, err := pinfo.HardwareUUID()
 		if err != nil {
 			log.Println("Unable to get the host hardware UUID")
+			return err
 		}
 		containerUUID := util.GetUUIDFromImageID(containerID)
 		imageUUID := util.GetUUIDFromImageID(imageID)
@@ -177,37 +324,25 @@ func (plugin *SecureDockerPlugin) createTrustReport(containerID string) {
 		log.Println("Container id : ", containerID)
 		manifest, err := vml.CreateContainerManifest(containerUUID, hardwareUUID, imageUUID, encrypted, integrityEnforced)
 		if err != nil {
-			log.Println("Unable to create manifest")
+			log.Println("Unable to create manifest for container ", containerID)
+			return err
 		}
 		manifestByte, err := json.Marshal(manifest)
+		if err != nil {
+			log.Printf("Error marshalling Manifest for container %v %v", containerID, err.Error())
+			return err
+		}
 		log.Println("Manifest: ", string(manifestByte))
-		if err != nil {
-			log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
-			return
-		}
 
-		timeOut, err := time.ParseDuration(util.WlagentSocketDialTimeout)
-		if err != nil {
-			log.Printf("Error while parsing time %s", err.Error())
-			return
-		}
-
-		conn, err := net.DialTimeout("unix", util.WlagentSocketFile, timeOut)
-		if err != nil {
-			log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
-			return
-		}
-		defer conn.Close()
-
-		rpcClient := rpc.NewClient(conn)
-		defer rpcClient.Close()
 		var args = ManifestString{
 			Manifest: string(manifestByte),
 		}
 		var status bool
-		err = rpcClient.Call("VirtualMachine.CreateInstanceTrustReport", &args, &status)
+		err = wlac.Call("VirtualMachine.CreateInstanceTrustReport", &args, &status)
 		if err != nil {
-			log.Println("Failed to create image trust report: ", err.Error())
+			log.Printf("Failed to create trust report for container %v %v: ", containerID, err.Error())
+			return err
 		}
 	}
+	return nil
 }

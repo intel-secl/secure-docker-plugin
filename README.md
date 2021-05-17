@@ -28,7 +28,8 @@ export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 ```
 
 ### Deploy
-The Secure Docker Plugin is bundled with ISecL workload agent, is depolyed when workload agent is installed with container security.
+The Secure Docker Plugin is bundled with ISecL workload agent, is deployed when workload agent is installed with
+container security.
 
 ### Manage service
 * Start service

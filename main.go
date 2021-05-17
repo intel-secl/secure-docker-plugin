@@ -11,6 +11,7 @@ import (
 	"log"
 	"os/user"
 	"secure-docker-plugin/v3/plugin"
+	"secure-docker-plugin/v3/util"
 	"strconv"
 )
 
@@ -19,8 +20,16 @@ const (
 	pluginSocket      = "/run/docker/plugins/secure-docker-plugin.sock"
 )
 
-func recovery() {
+var (
+	// Version holds the version number for the WLA binary
+	Version = ""
+	// BuildDate holds the build date for the WLA binary
+	BuildDate = ""
+	// GitHash holds the commit hash for the WLA binary
+	GitHash = ""
+)
 
+func recovery() {
 	if r := recover(); r != nil {
 		log.Println("Recovered:", r)
 	}
@@ -35,7 +44,7 @@ func main() {
 	defer recovery()
 
 	// Create sdp instance
-	sdp, err := plugin.NewPlugin(*flDockerHost)
+	sdp, err := plugin.NewPlugin(*flDockerHost, util.WlagentSocketFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -59,6 +68,6 @@ func main() {
 	log.Println("Plugin exit")
 	err = sdp.Cleanup()
 	if err != nil {
-		log.Printf("Error closing Docker client: %v", err)
+		log.Printf("%v", err)
 	}
 }

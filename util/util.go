@@ -9,20 +9,16 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/json"
-	"intel/isecl/lib/flavor/v3"
-	"log"
-	"net"
-	"net/rpc"
-	"strings"
-	"time"
-
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-plugins-helpers/authorization"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
+	"intel/isecl/lib/flavor/v3"
+	"log"
+	"net/rpc"
+	"strings"
 )
 
 const WlagentSocketFile = "/var/run/workload-agent/wlagent.sock"
@@ -56,24 +52,13 @@ type OutFlavor struct {
 }
 
 // GetImageFlavor is used to retrieve image flavor from Workload Agent
-func GetImageFlavor(imageUUID string) (flavor.Image, error) {
+func GetImageFlavor(client *rpc.Client, imageUUID string) (flavor.Image, error) {
 
 	var flvr flavor.Image
+	var err error
+
 	log.Printf("Fetching flavor for image id %s", imageUUID)
-	timeOut, err := time.ParseDuration(WlagentSocketDialTimeout)
-	if err != nil {
-		return flvr, errors.Errorf("Error while parsing time %s", err.Error())
-	}
 
-	conn, err := net.DialTimeout("unix", WlagentSocketFile, timeOut)
-	if err != nil {
-		log.Printf("Failed to dial workload-agent wlagent.sock %s", err.Error())
-		return flvr, nil
-	}
-	defer conn.Close()
-
-	client := rpc.NewClient(conn)
-	defer client.Close()
 	var outFlavor OutFlavor
 	var args = FlavorInfo{
 		ImageID: imageUUID,
@@ -107,14 +92,8 @@ func GetImageRef(req authorization.Request) string {
 }
 
 // GetImageMetadata returns the image metadata for a container image
-func GetImageMetadata(imageRef string) (*types.ImageInspect, error) {
-
-	client, err := client.NewClientWithOpts()
-	if err != nil {
-		return nil, err
-	}
-	defer client.Close()
-	imageInspect, _, err := client.ImageInspectWithRaw(context.Background(), imageRef)
+func GetImageMetadata(dc *client.Client, imageRef string) (*types.ImageInspect, error) {
+	imageInspect, _, err := dc.ImageInspectWithRaw(context.Background(), imageRef)
 	if err != nil {
 		log.Printf("Couldn't retrieve image metadata from name: %v", err)
 		return nil, nil
@@ -124,9 +103,8 @@ func GetImageMetadata(imageRef string) (*types.ImageInspect, error) {
 }
 
 // GetImageID returns the image id for a container image
-func GetImageID(imageRef string) (string, error) {
-
-	imageMetadata, err := GetImageMetadata(imageRef)
+func GetImageID(dc *client.Client, imageRef string) (string, error) {
+	imageMetadata, err := GetImageMetadata(dc, imageRef)
 	if err != nil {
 		log.Printf("Couldn't retrieve image metadata: %v", err)
 		return "", err
@@ -181,19 +159,16 @@ func GetRegistryAddr(imageRef string) (string, string, string, error) {
 	"IsSecurityTransformed": true
 }
 */
-func GetSecurityMetaData(imageID string) (*securityMetaData, error) {
-
+func GetSecurityMetaData(dc *client.Client, imageID string) (*securityMetaData, error) {
 	var secData securityMetaData
-	client, err := client.NewClientWithOpts()
-	defer client.Close()
+	imageInfo, _, err := dc.ImageInspectWithRaw(context.Background(), imageID)
 	if err != nil {
 		return nil, err
 	}
-	imageInfo, _, err := client.ImageInspectWithRaw(context.Background(), imageID)
+	securityMetaData, err := json.Marshal(imageInfo.GraphDriver.Data["security-meta-data"])
 	if err != nil {
 		return nil, err
 	}
-	securityMetaData, _ := json.Marshal(imageInfo.GraphDriver.Data["security-meta-data"])
 	replacer := strings.NewReplacer("\\", "", "\"{", "{", "}\"", "}")
 	err = json.Unmarshal([]byte(replacer.Replace(string(securityMetaData))), &secData)
 	if err != nil {

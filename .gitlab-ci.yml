@@ -7,7 +7,6 @@ before_script:
   - export https_proxy=${HTTPS_PROXY}
   - export no_proxy=${NO_PROXY}
   - git config --list
-  - env
   - cd $CI_PROJECT_DIR
 
 stages:
