@@ -165,6 +165,10 @@ func GetSecurityMetaData(dc *client.Client, imageID string) (*securityMetaData, 
 	if err != nil {
 		return nil, err
 	}
+
+	if imageInfo.GraphDriver.Data["security-meta-data"] == "" {
+		return nil, nil
+	}
 	securityMetaData, err := json.Marshal(imageInfo.GraphDriver.Data["security-meta-data"])
 	if err != nil {
 		return nil, err

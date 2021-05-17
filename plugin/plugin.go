@@ -310,6 +310,8 @@ func createTrustReport(dc *dockerclient.Client, wlac *rpc.Client, containerID st
 		if securityMetaData != nil {
 			encrypted = securityMetaData.RequiresConfidentiality
 			integrityEnforced = securityMetaData.RequiresIntegrity
+		} else {
+			return nil
 		}
 		// get host hardware UUID
 		log.Println("Retrieving host hardware UUID...")
