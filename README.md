@@ -1,3 +1,12 @@
+DISCONTINUATION OF PROJECT
+
+This project will no longer be maintained by Intel.
+
+Intel has ceased development and contributions including, but not limited to, maintenance, bug fixes, new releases, or updates, to this project.  
+
+Intel no longer accepts patches to this project.
+
+If you have an ongoing need to use this project, are interested in independently developing it, or would like to maintain patches for the open source software community, please create your own fork of this project.  
 ##### Intel<sup>®</sup> Security Libraries for Data Center  - Secure Docker Plugin
 Secure Docker Plugin (SDP) allows the secure docker daemon to run according to the policy set in the container image flavor. 
 The SDP is created based on the authorization plugin architecture supported by the docker engine
